@@ -2,17 +2,17 @@
 #include <stdlib.h>
 //Cấu trúc của hạng tử
 struct Node {
-    int bac; //Bậc của hạng tử
-    int heSo; //Hệ số của hạng tử
-    struct Node* next; //Con trỏ trỏ đến hạng tử tiếp theo
+    int bac; 
+    int heSo; 
+    struct Node* next; 
 };
 //Hàm tạo hạng tử
 struct Node* taoDaThuc(int heSo, int bac){
-    struct Node* newNode = (struct Node*)malloc(sizeof(struct Node)); // Cấp phát bộ nhớ cho node mới
-    newNode -> heSo = heSo; //Gán hệ số cho hạng tử
-    newNode -> bac = bac; //Gán bậc cho hạng tử
-    newNode -> next = NULL; //Khởi tạo con trỏ next là NULL vì đây là hạng tử mới
-    return newNode; //Trả về con trỏ trỏ đến hạng tử mới
+    struct Node* newNode = (struct Node*)malloc(sizeof(struct Node)); 
+    newNode -> heSo = heSo; 
+    newNode -> bac = bac; 
+    newNode -> next = NULL; 
+    return newNode; 
 }
 //Hàm chèn đa thức
 void chenDaThuc(struct Node** head, int heSo, int bac){
