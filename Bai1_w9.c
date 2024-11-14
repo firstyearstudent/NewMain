@@ -1,193 +1,149 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 
-// Cấu trúc lưu ngày tháng năm sinh
-struct Ngay {
-    int ngay;
-    int thang;
-    int nam;
-};
+#define MAX_FILENAME_LENGTH 256
+#define USB_SIZE 32 * 1024 * 1024 * 1024  // Kích thước USB 32GB
 
-// Cấu trúc lưu thông tin sinh viên
-struct SinhVien {
-    char maSV[8];
-    char hoTen[50];
-    int gioiTinh;
-    struct Ngay ngaySinh;
-    char diaChi[100];
-    char lop[12];
-    char khoa[7];
-};
+typedef struct FileNode {
+    char filename[MAX_FILENAME_LENGTH];
+    long size;
+    long creationTime;
+    struct FileNode* next;
+} FileNode;
 
-// Cấu trúc một nút trong danh sách liên kết đơn
-struct Node {
-    struct SinhVien data;
-    struct Node* link;
-};
-
-// Cấu trúc danh sách liên kết đơn
-struct List {
-    struct Node* first;
-    struct Node* last;
-};
-
-// Hàm khởi tạo danh sách
-void khoiTaoDanhSach(struct List* list) {
-    list->first = NULL;
-    list->last = NULL;
+// Hàm sao chép chuỗi
+void myStrCpy(char* dest, const char* src) {
+    int i = 0;
+    while (src[i] != '\0' && i < MAX_FILENAME_LENGTH - 1) {
+        dest[i] = src[i];
+        i++;
+    }
+    dest[i] = '\0';
 }
 
-// Hàm tạo một nút sinh viên mới
-struct Node* taoNode(struct SinhVien sv) {
-    struct Node* node = (struct Node*)malloc(sizeof(struct Node));
-    node->data = sv;
-    node->link = NULL;
-    return node;
-}
+// Hàm thêm file vào danh sách liên kết theo thứ tự thời gian
+void addFile(FileNode** head, const char* filename, long size, long creationTime) {
+    FileNode* newFile = (FileNode*)malloc(sizeof(FileNode));
+    myStrCpy(newFile->filename, filename);
+    newFile->size = size;
+    newFile->creationTime = creationTime;
+    newFile->next = NULL;
 
-// Hàm nhập thông tin sinh viên
-struct SinhVien nhapSinhVien() {
-    struct SinhVien sv;
-    printf("Nhap ma SV: ");
-    scanf("%s", sv.maSV);
-    printf("Nhap ho ten: ");
-    scanf(" %[^\n]", sv.hoTen);
-    printf("Nhap gioi tinh (0: Nu, 1: Nam): ");
-    scanf("%d", &sv.gioiTinh);
-    printf("Nhap ngay sinh (dd mm yyyy): ");
-    scanf("%d %d %d", &sv.ngaySinh.ngay, &sv.ngaySinh.thang, &sv.ngaySinh.nam);
-    printf("Nhap dia chi: ");
-    scanf(" %[^\n]", sv.diaChi);
-    printf("Nhap lop: ");
-    scanf("%s", sv.lop);
-    printf("Nhap khoa: ");
-    scanf("%s", sv.khoa);
-    return sv;
-}
-
-// Hàm thêm sinh viên vào danh sách theo thứ tự mã sinh viên
-void themSinhVien(struct List* list, struct SinhVien sv) {
-    struct Node* node = taoNode(sv);
-
-    if (list->first == NULL || strcmp(sv.maSV, list->first->data.maSV) < 0) {
-        // Chèn vào đầu danh sách
-        node->link = list->first;
-        list->first = node;
-        if (list->last == NULL) list->last = node;
+    if (*head == NULL || (*head)->creationTime > creationTime) {
+        newFile->next = *head;
+        *head = newFile;
     } else {
-        // Tìm vị trí chèn vào giữa hoặc cuối danh sách
-        struct Node* current = list->first;
-        while (current->link != NULL && strcmp(current->link->data.maSV, sv.maSV) < 0) {
-            current = current->link;
+        FileNode* current = *head;
+        while (current->next != NULL && current->next->creationTime < creationTime) {
+            current = current->next;
         }
-        node->link = current->link;
-        current->link = node;
-        if (node->link == NULL) list->last = node;
+        newFile->next = current->next;
+        current->next = newFile;
     }
 }
 
-// Hàm in danh sách sinh viên
-void inDanhSach(struct List list) {
-    struct Node* current = list.first;
-    while (current != NULL) {
-        struct SinhVien sv = current->data;
-        printf("\nMa SV: %s\n \nHo Ten: %s\n \nGioi Tinh: %d\n \nNgay Sinh: %02d/%02d/%04d\n \nDia Chi: %s\n \nLop: %s\n \nKhoa: %s\n",
-               sv.maSV, sv.hoTen, sv.gioiTinh, sv.ngaySinh.ngay, sv.ngaySinh.thang, sv.ngaySinh.nam,
-               sv.diaChi, sv.lop, sv.khoa);
-        current = current->link;
+// Hàm tính tổng kích thước các file
+long calculateTotalSize(FileNode* head) {
+    long totalSize = 0;
+    while (head != NULL) {
+        totalSize += head->size;
+        head = head->next;
     }
+    return totalSize;
 }
 
-// Hàm tìm và in sinh viên có cùng ngày sinh
-void timCungNgaySinh(struct List list) {
-    struct Node* current = list.first;
-    int found = 0;
+// Hàm loại bỏ các file có kích thước nhỏ nhất để phù hợp với kích thước USB
+void removeSmallestFiles(FileNode** head, long maxSize) {
+    while (calculateTotalSize(*head) > maxSize) {
+        FileNode* smallest = *head;
+        FileNode* current = *head;
+        FileNode* prev = NULL;
+        FileNode* prevSmallest = NULL;
 
-    while (current != NULL) {
-        struct Node* temp = current->link;
-        while (temp != NULL) {
-            if (current->data.ngaySinh.ngay == temp->data.ngaySinh.ngay &&
-                current->data.ngaySinh.thang == temp->data.ngaySinh.thang &&
-                current->data.ngaySinh.nam == temp->data.ngaySinh.nam) {
-                if (!found) {
-                    printf("Cac sinh vien co cung ngay sinh:\n");
-                    found = 1;
-                }
-                printf("\nMa SV: %s\n \nHo Ten: %s\n \nNgay Sinh: %02d/%02d/%04d\n\n",
-                       current->data.maSV, current->data.hoTen,
-                       current->data.ngaySinh.ngay, current->data.ngaySinh.thang, current->data.ngaySinh.nam);
-                printf("\nMa SV: %s\n \nHo Ten: %s\n \nNgay Sinh: %02d/%02d/%04d\n\n",
-                       temp->data.maSV, temp->data.hoTen,
-                       temp->data.ngaySinh.ngay, temp->data.ngaySinh.thang, temp->data.ngaySinh.nam);
+        while (current != NULL) {
+            if (current->size < smallest->size) {
+                smallest = current;
+                prevSmallest = prev;
             }
-            temp = temp->link;
-        }
-        current = current->link;
-    }
-
-    if (!found) {
-        printf("Khong tim thay sinh vien cung ngay sinh\n");
-    }
-}
-
-// Hàm xóa sinh viên có cùng ngày sinh
-void loaiBoCungNgaySinh(struct List* list) {
-    struct Node* current = list->first;
-    struct Node* prev = NULL;
-
-    while (current != NULL) {
-        struct Node* temp = current->link;
-        int hasDuplicate = 0;
-
-        while (temp != NULL) {
-            if (current->data.ngaySinh.ngay == temp->data.ngaySinh.ngay &&
-                current->data.ngaySinh.thang == temp->data.ngaySinh.thang &&
-                current->data.ngaySinh.nam == temp->data.ngaySinh.nam) {
-                hasDuplicate = 1;
-                break;
-            }
-            temp = temp->link;
-        }
-
-        if (hasDuplicate) {
-            struct Node* toDelete = current;
-            if (prev == NULL) {
-                list->first = current->link;
-            } else {
-                prev->link = current->link;
-            }
-            current = current->link;
-            free(toDelete);
-        } else {
             prev = current;
-            current = current->link;
+            current = current->next;
         }
+
+        if (prevSmallest == NULL) {
+            *head = smallest->next;
+        } else {
+            prevSmallest->next = smallest->next;
+        }
+        free(smallest);
     }
 }
 
-int main() {
-    struct List list;
-    khoiTaoDanhSach(&list);
-
-    int n;
-    printf("Nhap so luong sinh vien: ");
-    scanf("%d", &n);
-
-    for (int i = 0; i < n; i++) {
-        struct SinhVien sv = nhapSinhVien();
-        themSinhVien(&list, sv);
+// Hàm in danh sách các file
+void printFiles(FileNode* head) {
+    while (head != NULL) {
+        printf("File: %s, Size: %ld bytes, Creation Time: %ld\n", head->filename, head->size, head->creationTime);
+        head = head->next;
     }
+}
 
-    printf("\nDanh sach sinh vien sau khi sap xep theo ma SV:\n");
-    inDanhSach(list);
+// Hàm nhập thông tin file từ người dùng
+void inputFile(FileNode** head) {
+    char filename[MAX_FILENAME_LENGTH];
+    long size, creationTime;
 
-    printf("\nSinh vien co cung ngay sinh:\n");
-    timCungNgaySinh(list);
+    printf("Nhap ten file: ");
+    scanf("%s", filename);
+    
+    printf("Nhap kich thuoc file (byte): ");
+    scanf("%ld", &size);
+    
+    printf("Nhap thoi gian tao file: ");
+    scanf("%ld", &creationTime);
 
-    printf("\nDanh sach sau khi loai bo sinh vien co cung ngay sinh:\n");
-    loaiBoCungNgaySinh(&list);
-    inDanhSach(list);
+    addFile(head, filename, size, creationTime);
+}
+
+// Hàm chính
+int main() {
+    FileNode* head = NULL;
+    int choice;
+
+    do {
+        printf("\nChon thao tac:\n");
+        printf("1. Them file vao danh sach\n");
+        printf("2. Xem danh sach file\n");
+        printf("3. Loai bo cac file nho nhat đe phu hop voi USB 32GB\n");
+        printf("4. Exit\n");
+        printf("Lua chon: ");
+        scanf("%d", &choice);
+
+        switch (choice) {
+            case 1:
+                inputFile(&head);
+                break;
+            case 2:
+                printf("\nDanh sach file hien tai:\n");
+                printFiles(head);
+                break;
+            case 3:
+                removeSmallestFiles(&head, USB_SIZE);
+                printf("\nDanh sach file sau khi loai bo cac file nho nhat:\n");
+                printFiles(head);
+                break;
+            case 4:
+                printf("Thoat chuong trinh.\n");
+                break;
+            default:
+                printf("Lua chon khong hop le. Vui long thu lai.\n");
+        }
+    } while (choice != 4);
+
+    // Giải phóng bộ nhớ
+    while (head != NULL) {
+        FileNode* temp = head;
+        head = head->next;
+        free(temp);
+    }
 
     return 0;
 }
