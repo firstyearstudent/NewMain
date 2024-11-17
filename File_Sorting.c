@@ -64,7 +64,7 @@ long calculateTotalSize(FolderNode* head) {
     return totalSize;
 }
 
-// Hàm loại bỏ file có kích thước nhỏ nhất và thời gian lâu nhất để phù hợp với kích thước USB
+// Hàm loại bỏ file có kích thước nhỏ nhất và thời gian lâu nhất 
 void removeOldestSmallestFile(FolderNode** head, long maxSize) {
     while (calculateTotalSize(*head) > maxSize) {
         FolderNode* smallest = *head;
