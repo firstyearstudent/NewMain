@@ -70,7 +70,7 @@ void AddToPosition(Stack* stack, Wood wood, int position) {
     // Lấy phần tử trên đỉnh stack
     Wood topWood = pop(stack);
     // Gọi đệ quy để thêm phần tử vào đáy
-    AddToPosition(stack, wood, position);
+    AddToPosition(stack, wood, position - 1);
     // Đưa phần tử trên đỉnh stack trở lại
     Add(stack, topWood);
 }
@@ -100,17 +100,17 @@ int main() {
         printf("\nWood storage management\n");
         printf("1. Add new wood block\n");
         printf("2. Display list of wood block\n");
-        printf("3. Add a new wood block to the bottom\n");
+        printf("3. Add new wood block to desinated position\n");
         printf("4. Exit\n");
         printf("Your selection: ");
         scanf("%d", &choice);
-        getchar(); // Xóa ký tự '\n' còn lại trong bộ đệm sau khi nhập số
+        getchar(); 
         
         switch (choice) {
             case 1: {
                 Wood wood;
                 printf("Enter wood type: ");
-                fgets(wood.type, 50, stdin);
+                fgets(wood.type, MAX_CAPACITY, stdin);
                 wood.type[strcspn(wood.type, "\n")] = '\0'; // Loại bỏ '\n'
                 printf("Enter length (m): ");
                 scanf("%f", &wood.length);
